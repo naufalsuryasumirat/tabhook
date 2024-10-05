@@ -1,0 +1,17 @@
+{
+  "manifest_version": 2,
+  "name": "tabhook",
+  "version": "0.0.0",
+  "description": "Simple indicator for quick tab navigation",
+
+  "icons": {
+    "48": "icons/tabhook.png"
+  },
+
+  "background": {
+    "scripts": ["tabhook.js"]
+  },
+
+  "host_permissions": ["<all_urls>"],
+  "permissions": ["tabs"]
+}
