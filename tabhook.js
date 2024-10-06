@@ -1,24 +1,21 @@
 const browser = window.browser;
-const numbers = ['¹','²','³','⁴','⁵','⁶','⁷','⁸','⁹'];
+const numbers = ['¹','²','³','⁴','⁵','⁶','⁷','⁸'];
+const maxNumbers = 8;
 
 var indexDict = { }
 
-// TODO: handle window events?
+// TODO: tab navigation using (ctrl,mod,others)
 
-// window events must also be accounted for
-// actions that can change the first tab index of a window
-//  the first tab is removed
-//  tabs are moved
-//  a new tab is created, the next ones should be updated
-//  onUpdate? just that tab?
-
-function setFirstIndex(windowId) {
-    const firstIndex = browser.tabs
+// TODO: buggy, incorrent with some hidden tabs
+//  if [0,2] is visible, but [1] is hidden
+//  if it were to change, couldn't use indexDict
+async function setFirstIndex(windowId) {
+    const firstIndex = await browser.tabs
         .query({ windowId: windowId, hidden: false })
         .then((tabs) => {
             return tabs.reduce(
                 (prev, cur) => prev.index < cur.index ? prev : cur).index
-        }, () => undefined);
+        }, console.error);
     indexDict[windowId] = firstIndex;
 
     return firstIndex;
@@ -30,68 +27,142 @@ function getFirstIndex(windowId) {
         return setFirstIndex(windowId);
     }
 
-    return firstIndex
+    return firstIndex;
 }
 
-// TODO: unfinished
-function updateTab(details, ignoreLoading = false) {
-    if (ignoreLoading && details.status === "loading") {
+function removeTabNumber(tab) {
+    browser.tabs.executeScript(
+        tab.id,
+        { code: `document.title = ${JSON.stringify(tab.title.substring(1))}` })
+        .catch((err) => console.error(err));
+}
+
+function updateTab(tab, ignoreNumbered = true, ignoreLoading = false) {
+    const alreadyNumbered = numbers.includes(tab.title[0]);
+    if (tab.hidden && alreadyNumbered) {
+        removeTabNumber(tab);
         return;
     }
 
-    const relativeIndex = details.index - getFirstIndex(details.windowId);
-    if (relativeIndex >= 9) {
+    if (tab.hidden
+        || (ignoreNumbered && alreadyNumbered)
+        || (ignoreLoading && tab.status === "loading")) {
         return;
     }
 
-    const newTitle = numbers[relativeIndex] + details.title;
-    try {
-        browser.tabs.executeScript(
-            details.id, { code: `document.title = ${JSON.stringify()}` }
-        )
-    } catch (e) {
-        console.error(e);
+    const relativeIndex = tab.index - getFirstIndex(tab.windowId);
+    if (relativeIndex > maxNumbers && !alreadyNumbered) {
+        return;
     }
+
+    let newTitle = (numbers[relativeIndex] || "")
+        + (alreadyNumbered ? tab.title.substring(1) : tab.title);
+
+    browser.tabs.executeScript(
+        tab.id,
+        { code: `document.title = ${JSON.stringify(newTitle)}` })
+        .catch((err) => console.error(err));
 }
 
-function updateWindow(windowId) {
+function updateWindow(windowId, startId = 0, ignoreNumbered = true) {
     browser.tabs
         .query({ windowId: windowId, hidden: false })
-        .then((tabs) => tabs.forEach(updateTab));
+        .then((tabs) => {
+            for (let tab of tabs) {
+                if (tab.index < startId) continue;
+                updateTab(tab, ignoreNumbered);
+            }
+            console.log(tabs);
+        });
 }
 
-function handleRemoved(tabId, removeInfo) {
-    console.log(tabId);
-    console.log(removeInfo);
+// what use of having tabId if can't be queried because it's already removed?
+function handleRemoved(_, removeInfo) {
+    if (removeInfo.isWindowClosing) {
+        return;
+    }
+
+    updateWindow(removeInfo.windowId, 0, false);
 }
 
-browser.tabs.onCreated.addListener(()=>{});
-browser.tabs.onMoved.addListener(()=>{});
-browser.tabs.onRemoved.addListener(handleRemoved);
-browser.tabs.onUpdated.addListener(function(_, _, tab) {
+function handleMoved(_, moveInfo) {
+    const minIndex = Math.min(moveInfo.fromIndex, moveInfo.toIndex);
+    updateWindow(moveInfo.windowId, minIndex, false);
+}
+
+function handleCreated(tab) {
+    updateWindow(tab.windowId, tab.index, false);
+}
+
+// doesn't work if title of tab contains char in numbers
+function handleUpdated(_, _, tab) {
+    if (tab.hidden) return;
     updateTab(tab);
-});
+}
 
-// browser.windows.onRemoved.addListener(handleWindowRemoved);
-// browser.windows.onCreated.addListener(handleWindowCreated);
+function handleVisibilityUpdated(_, changeInfo, tab) {
+    if (changeInfo.pinned) {
+        updateWindow(tab.windowId);
+        return;
+    }
 
-console.log("Loaded");
+    // previously visible, now hidden
+    const wid = tab.windowId;
+    setFirstIndex(wid);
+    if (changeInfo.hidden) {
+        updateTab(tab);
+    }
+    updateWindow(wid, 0, false);
+}
 
-// browser.tabs
-//     .query({windowId: 1, hidden: false})
-//     .then((tabs) => {
-//         for (const tab of tabs) {
-//             console.log(tab);
-//         }
-//     });
+function handleDetached(tabId, detachInfo) {
+    setFirstIndex(detachInfo.oldWindowId);
+    updateWindow(detachInfo.oldWindowId, detachInfo.oldPosition, false);
+    browser.tabs
+        .get(tabId)
+        .then((tab) => updateTab(tab))
+        .catch(console.error);
+}
 
+function handleAttached(_, attachInfo) {
+    setFirstIndex(attachInfo.newWindowId);
+    updateWindow(attachInfo.newWindowId, attachInfo.newPosition, false);
+}
+
+// basic tab operations
+browser.tabs.onCreated.addListener(handleCreated);
+browser.tabs.onMoved.addListener(handleMoved);
+browser.tabs.onRemoved.addListener(handleRemoved);
+
+// most likely still incorrect
+browser.tabs.onDetached.addListener(handleDetached);
+browser.tabs.onAttached.addListener(handleAttached);
+
+const filterTitle = { properties: ["title"] };
+const filterVisibility = { properties: ["hidden", "pinned"] };
+browser.tabs.onUpdated.addListener(handleUpdated, filterTitle);
+browser.tabs.onUpdated.addListener(handleVisibilityUpdated, filterVisibility);
+
+function handleWindowCreated(windowId) {
+    setFirstIndex(windowId);
+}
+
+function handleWindowRemoved(windowId) {
+    if (indexDict[windowId] === undefined) return;
+    delete indexDict[windowId];
+}
+
+browser.windows.onRemoved.addListener(handleWindowRemoved);
+browser.windows.onCreated.addListener(handleWindowCreated);
+
+// test
+console.log("Load{test}");
 browser.windows
     .getAll()
     .then((windows) => {
         for (const window of windows) {
             if (window.type != "normal") continue;
-            // updateWindow(window.id);
             setFirstIndex(window.id);
+            updateWindow(window.id);
         }
-        console.log(indexDict);
     });

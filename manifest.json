@@ -12,5 +12,5 @@
     "scripts": ["tabhook.js"]
   },
 
-  "permissions": ["tabs"]
+  "permissions": ["tabs", "<all_urls>"]
 }
