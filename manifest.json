@@ -12,5 +12,47 @@
     "scripts": ["tabhook.js"]
   },
 
-  "permissions": ["tabs", "<all_urls>"]
+  "permissions": ["tabs", "<all_urls>"],
+
+  "commands": {
+    "hook-1": {
+      "suggested_key": { "linux": "Ctrl+1" },
+      "description": "Hook tab 1"
+    },
+
+    "hook-2": {
+      "suggested_key": { "linux": "Ctrl+2" },
+      "description": "Hook tab 2"
+    },
+
+    "hook-3": {
+      "suggested_key": { "linux": "Ctrl+3" },
+      "description": "Hook tab 3"
+    },
+
+    "hook-4": {
+      "suggested_key": { "linux": "Ctrl+4" },
+      "description": "Hook tab 4"
+    },
+
+    "hook-5": {
+      "suggested_key": { "linux": "Ctrl+5" },
+      "description": "Hook tab 5"
+    },
+
+    "hook-6": {
+      "suggested_key": { "linux": "Ctrl+6" },
+      "description": "Hook tab 6"
+    },
+
+    "hook-7": {
+      "suggested_key": { "linux": "Ctrl+7" },
+      "description": "Hook tab 7"
+    },
+
+    "hook-8": {
+      "suggested_key": { "linux": "Ctrl+8" },
+      "description": "Hook tab 8"
+    }
+  }
 }

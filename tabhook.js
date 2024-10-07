@@ -4,8 +4,6 @@ const maxNumbers = 8;
 
 var indexDict = { }
 
-// TODO: tab navigation using (ctrl,mod,others)
-
 // TODO: buggy, incorrent with some hidden tabs
 //  if [0,2] is visible, but [1] is hidden
 //  if it were to change, couldn't use indexDict
@@ -28,6 +26,18 @@ function getFirstIndex(windowId) {
     }
 
     return firstIndex;
+}
+
+function getLastId(windowId) {
+    const lastIndex = browser.tabs
+        .query({ windowId: windowId, hidden: false })
+        .then((tabs) => {
+            return tabs.reduce(
+                (prev, cur) => prev.index < cur.index ? cur : prev
+            ).id;
+        }, console.error);
+
+    return lastIndex;
 }
 
 function removeTabNumber(tab) {
@@ -72,11 +82,9 @@ function updateWindow(windowId, startId = 0, ignoreNumbered = true) {
                 if (tab.index < startId) continue;
                 updateTab(tab, ignoreNumbered);
             }
-            console.log(tabs);
         });
 }
 
-// what use of having tabId if can't be queried because it's already removed?
 function handleRemoved(_, removeInfo) {
     if (removeInfo.isWindowClosing) {
         return;
@@ -94,7 +102,6 @@ function handleCreated(tab) {
     updateWindow(tab.windowId, tab.index, false);
 }
 
-// doesn't work if title of tab contains char in numbers
 function handleUpdated(_, _, tab) {
     if (tab.hidden) return;
     updateTab(tab);
@@ -155,8 +162,6 @@ function handleWindowRemoved(windowId) {
 browser.windows.onRemoved.addListener(handleWindowRemoved);
 browser.windows.onCreated.addListener(handleWindowCreated);
 
-// test
-console.log("Load{test}");
 browser.windows
     .getAll()
     .then((windows) => {
@@ -166,3 +171,58 @@ browser.windows
             updateWindow(window.id);
         }
     });
+
+// keyboard commands
+// pretty funny function name, I must say
+//  this breaks if the logic upstairs is incorrect
+async function getHooked(windowId, index) {
+    const hooked = await browser.tabs
+        .query({
+            windowId: windowId,
+            index: getFirstIndex(windowId) + index })
+        .then(function(tabs) {
+            if (!tabs.length) return getLastId(windowId);
+            return tabs[0].id;
+        })
+        .catch((err) => { console.error(err); });
+
+    return hooked;
+}
+
+async function hookTab(current, destination) {
+    const hookedId = await getHooked(current.windowId, destination);
+    browser.tabs.update(
+        hookedId,
+        { active: true });
+}
+
+function handleCommands(name, tab) {
+    switch (name) {
+    case "hook-1":
+        hookTab(tab, 0);
+        break;
+    case "hook-2":
+        hookTab(tab, 1);
+        break;
+    case "hook-3":
+        hookTab(tab, 2);
+        break;
+    case "hook-4":
+        hookTab(tab, 3);
+        break;
+    case "hook-5":
+        hookTab(tab, 4);
+        break;
+    case "hook-6":
+        hookTab(tab, 5);
+        break;
+    case "hook-7":
+        hookTab(tab, 6);
+        break;
+    case "hook-8":
+        hookTab(tab, 7);
+        break;
+    }
+}
+
+browser.commands.onCommand.addListener(handleCommands);
