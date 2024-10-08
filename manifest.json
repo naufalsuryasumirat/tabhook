@@ -53,6 +53,16 @@
     "hook-8": {
       "suggested_key": { "linux": "Ctrl+8" },
       "description": "Hook tab 8"
+    },
+
+    "hook-9": {
+      "suggested_key": { "linux": "Ctrl+9" },
+      "description": "Hook tab 9"
+    },
+
+    "hook-0": {
+      "suggested_key": { "linux": "Ctrl+0" },
+      "description": "Hook tab 0"
     }
   }
 }

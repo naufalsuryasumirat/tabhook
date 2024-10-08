@@ -1,10 +1,10 @@
 const browser = window.browser;
-const numbers = ['¹','²','³','⁴','⁵','⁶','⁷','⁸'];
-const maxNumbers = 8;
+const numbers = ['¹','²','³','⁴','⁵','⁶','⁷','⁸','⁹','⁰'];
+const maxNumbers = 10;
 
 var indexDict = { }
 
-// TODO: buggy, incorrent with some hidden tabs
+// TODO: buggy, incorrect with some hidden tabs
 //  if [0,2] is visible, but [1] is hidden
 //  if it were to change, couldn't use indexDict
 async function setFirstIndex(windowId) {
@@ -221,6 +221,12 @@ function handleCommands(name, tab) {
         break;
     case "hook-8":
         hookTab(tab, 7);
+        break;
+    case "hook-9":
+        hookTab(tab, 8);
+        break;
+    case "hook-0":
+        hookTab(tab, 9);
         break;
     }
 }
